@@ -11,7 +11,7 @@ import SwiftUI
 struct GymChatApp_ITHSApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainMessagesView()
         }
     }
 }
