@@ -46,6 +46,7 @@ struct RecentMessages: Codable, Identifiable {
     
     
 }
+
 struct GymSelectionView: View {
     @Binding var isPresented: Bool
     let updateGymSelection: (Int) -> Void
@@ -72,9 +73,6 @@ struct GymSelectionView: View {
 
 
 
-
-
-
 class MainMessagesViewModel: ObservableObject {
     
     @Published var errorMessage = ""
@@ -93,6 +91,7 @@ class MainMessagesViewModel: ObservableObject {
     }
     
     @Published var recentMessages = [RecentMessages]()
+        private var isInitialFetchDone = false // Add this line
     
     private func fetchRecentMessages() {
         guard let uid = FirebaseManager.shared.auth.currentUser?.uid else {
@@ -155,28 +154,36 @@ class MainMessagesViewModel: ObservableObject {
             }
     }
     private func fetchRecentMessagesForCurrentUser(uid: String) {
-            FirebaseManager.shared.firestore
-                .collection("recent_messages")
-                .document(uid)
-                .collection("messages")
-                .order(by: "timestamp")
-                .addSnapshotListener { querySnapshot, error in
-                    if let error = error {
-                        self.errorMessage = "Failed to listen for recent messages: \(error)"
-                        print(error)
-                        return
-                    }
+        FirebaseManager.shared.firestore
+            .collection("recent_messages")
+            .document(uid)
+            .collection("messages")
+            .order(by: "timestamp")
+            .addSnapshotListener { [weak self] querySnapshot, error in
+                guard let self = self else { return }
 
-                    self.recentMessages.removeAll() // Clear existing messages
-
-                    querySnapshot?.documentChanges.forEach({ change in
-                        let docId = change.document.documentID
-
-                        self.recentMessages.append(.init(documentId: docId, data: change.document.data()))
-
-                    })
+                if let error = error {
+                    self.errorMessage = "Failed to listen for recent messages: \(error)"
+                    print(error)
+                    return
                 }
-        }
+
+                querySnapshot?.documentChanges.forEach({ change in
+                    let docId = change.document.documentID
+                    let newMessage = RecentMessages(documentId: docId, data: change.document.data())
+                    
+                    // Check if the conversation already exists
+                    if let index = self.recentMessages.firstIndex(where: { $0.documentId == docId }) {
+                        // Update the existing conversation with new details if needed
+                        self.recentMessages[index] = newMessage
+                    } else {
+                        // Insert the new conversation
+                        self.recentMessages.insert(newMessage, at: 0) // Insert at beginning for recency
+                    }
+                })
+            }
+    }
+
     
     @Published var isUserCurrentlyLoggedOut = false
     
@@ -194,6 +201,7 @@ struct MainMessagesView: View {
     @State var shouldNavigateToChatLogView = false
     
     @State private var shouldShowGymSelection = false
+
     
     @ObservedObject private var vm = MainMessagesViewModel()
     
@@ -209,18 +217,18 @@ struct MainMessagesView: View {
                 
                 NavigationLink("", isActive:
                 $shouldNavigateToChatLogView) {
-                    ChatLogView(chatUser: self.vm.chatUser)
+                    ChatLogView(chatUser: self.chatUser)
                 }
             }
             .overlay(
                newMessageButton, alignment: .bottom)
             .navigationBarHidden(true)
             .sheet(isPresented: $shouldShowGymSelection) {
-                            GymSelectionView(isPresented: $shouldShowGymSelection, updateGymSelection: { selectedGym in
-                                vm.updateGymForCurrentUser(selectedGym: selectedGym)
-                                shouldShowGymSelection = false
-                            })
-                        }
+                                        GymSelectionView(isPresented: $shouldShowGymSelection, updateGymSelection: { selectedGym in
+                                            vm.updateGymForCurrentUser(selectedGym: selectedGym)
+                                            shouldShowGymSelection = false
+                                        })
+                                    }
         }
     }
     
@@ -265,14 +273,14 @@ struct MainMessagesView: View {
                 
             }
             Button(action: {
-                           shouldShowGymSelection = true
-                       }) {
-                           Image(systemName: "pencil")
-                               .font(.system(size: 24, weight: .bold))
-                               .foregroundColor(Color(.label))
-                       }
-                   }
-        
+                                      shouldShowGymSelection = true
+                                  }) {
+                                      Image(systemName: "pencil")
+                                          .font(.system(size: 24, weight: .bold))
+                                          .foregroundColor(Color(.label))
+                                  }
+                              
+        }
         .padding()
         .actionSheet(isPresented: $shouldShowLogOutOptions) {
             .init(title: Text("Settings"), message:
@@ -360,7 +368,7 @@ struct MainMessagesView: View {
         }label: {
             HStack{
                 Spacer()
-                Text("+ Find New Gym Partner In Your Gym")
+                Text("+ Contact Local Gym/Members")
                     .font(.system(size: 16,weight: .bold))
                 Spacer()
             }
@@ -408,4 +416,3 @@ struct MainMessagesView_Previews: PreviewProvider {
     }
         
 }
-
