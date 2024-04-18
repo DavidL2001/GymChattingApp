@@ -23,7 +23,7 @@ class CreateNewMessageViewModel: ObservableObject {
             return
         }
         
-        // Fetch the selected gym of the current user
+     
         let currentUserRef = FirebaseManager.shared.firestore.collection("users").document(currentUser.uid)
         
         currentUserRef.getDocument { (documentSnapshot, error) in
@@ -39,7 +39,7 @@ class CreateNewMessageViewModel: ObservableObject {
                 return
             }
             
-            // Fetch users with the same selected gym
+         
             FirebaseManager.shared.firestore.collection("users")
                 .whereField("selectedGym", isEqualTo: selectedGym)
                 .getDocuments { (querySnapshot, error) in
@@ -53,7 +53,7 @@ class CreateNewMessageViewModel: ObservableObject {
                         let data = snapshot.data()
                         let user = ChatUser(data: data)
                         
-                        // Exclude the current user from the list
+                        
                         if user.uid != currentUser.uid {
                             self.users.append(.init(data: data))
                         }
