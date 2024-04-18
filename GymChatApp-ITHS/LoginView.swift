@@ -9,7 +9,7 @@ struct LoginView: View {
     @State private var isLoginMode = false
     @State private var email = ""
     @State private var password = ""
-    @State private var selectedGym = 1 // Default gym selection
+    @State private var selectedGym = 1
     
     @State private var shouldShowImagePicker = false
     @State private var image: UIImage?
@@ -107,35 +107,35 @@ struct LoginView: View {
         FirebaseManager.shared.auth.signIn(withEmail: email, password: password) {
             result, err in
             if let err = err {
-                print("Failed to login user:", err)
-                self.loginStatusMessage = "Failed to login user: \(err)"
+                self.loginStatusMessage = "Failed to login user"
                 return
             }
             
-            print("Successfully logged in as user: \(result?.user.uid ?? "")")
-            self.loginStatusMessage = ("Successfully logged in as user: \(result?.user.uid ?? "")")
+           
             self.didCompleteLoginProcess()
         }
     }
     
     private func createNewAccount() {
-        if self.image == nil {
+        // Ensure the avatar image is selected before proceeding
+        guard let _ = self.image else {
             self.loginStatusMessage = "You must select an avatar image"
+            return
         }
         
-        FirebaseManager.shared.auth.createUser(withEmail: email, password: password) {
-            result, err in
+        FirebaseManager.shared.auth.createUser(withEmail: email, password: password) { result, err in
             if let err = err {
-                print("Failed to create user:", err)
-                self.loginStatusMessage = "Failed to create user: \(err)"
+                print("Failed to create user: \(err)")
+                self.loginStatusMessage = "Failed to create user: \(err.localizedDescription)"
                 return
             }
             
-            print("Successfully created user: \(result?.user.uid ?? "")")
-            self.loginStatusMessage = ("Successfully created user: \(result?.user.uid ?? "")")
+            print("Successfully created user")
+            self.loginStatusMessage = "Successfully created user"
             self.persistImageToStorage()
         }
     }
+
     
     private func persistImageToStorage() {
         guard let uid = FirebaseManager.shared.auth.currentUser?.uid else { return }
@@ -152,7 +152,7 @@ struct LoginView: View {
                     self.loginStatusMessage = "Failed to retrieve downloadURL: \(err)"
                     return
                 }
-                self.loginStatusMessage = "Successfully stored image with URL: \(url?.absoluteString ?? "")"
+                
                 print(url?.absoluteString)
                 
                 guard let url = url else { return }
@@ -167,7 +167,7 @@ struct LoginView: View {
             "email": self.email,
             "uid": uid,
             "profileImageUrl": imageProfileUrl.absoluteString,
-            "selectedGym": selectedGym // Store selected gym
+            "selectedGym": selectedGym 
         ] as [String : Any]
         FirebaseManager.shared.firestore.collection("users")
             .document(uid).setData(userData) { err in

@@ -91,10 +91,11 @@ class MainMessagesViewModel: ObservableObject {
     }
     
     @Published var recentMessages = [RecentMessages]()
-        private var isInitialFetchDone = false // Add this line
+        private var isInitialFetchDone = false 
     
     private func fetchRecentMessages() {
         guard let uid = FirebaseManager.shared.auth.currentUser?.uid else {
+            recentMessages = []
             return }
         
         FirebaseManager.shared.firestore
@@ -120,7 +121,7 @@ class MainMessagesViewModel: ObservableObject {
                     
                     self.recentMessages.insert(.init(documentId: docId, data: change.document.data()), at: 0)
                     
-                  //  self.recentMessages.append()
+                
                    
                 })
         }
@@ -142,12 +143,10 @@ class MainMessagesViewModel: ObservableObject {
                     return
                 }
                 
-           //     self.errorMessage = "123"
-                
+       
                 guard let data = snapshot?.data() else {
                     self.errorMessage = "No data found"
                     return}
-               // self.errorMessage = "Data: \(data.description)"
                 
                 self.chatUser = .init(data: data)
                 self.fetchRecentMessagesForCurrentUser(uid: uid)
@@ -172,23 +171,25 @@ class MainMessagesViewModel: ObservableObject {
                     let docId = change.document.documentID
                     let newMessage = RecentMessages(documentId: docId, data: change.document.data())
                     
-                    // Check if the conversation already exists
+                   
                     if let index = self.recentMessages.firstIndex(where: { $0.documentId == docId }) {
-                        // Update the existing conversation with new details if needed
+            
                         self.recentMessages[index] = newMessage
                     } else {
-                        // Insert the new conversation
-                        self.recentMessages.insert(newMessage, at: 0) // Insert at beginning for recency
+                    
+                        self.recentMessages.insert(newMessage, at: 0)
                     }
                 })
             }
     }
+
 
     
     @Published var isUserCurrentlyLoggedOut = false
     
     func handleSignOut() {
         isUserCurrentlyLoggedOut.toggle()
+        recentMessages.removeAll()
         try? FirebaseManager.shared.auth.signOut()
     }
     
@@ -275,7 +276,7 @@ struct MainMessagesView: View {
             Button(action: {
                                       shouldShowGymSelection = true
                                   }) {
-                                      Image(systemName: "pencil")
+                                      Image(systemName: "dumbbell.fill")
                                           .font(.system(size: 24, weight: .bold))
                                           .foregroundColor(Color(.label))
                                   }
@@ -329,7 +330,7 @@ struct MainMessagesView: View {
                                 .overlay(
                                                 RoundedRectangle(cornerRadius: 64)
                                                     .stroke(Color.black, lineWidth: 1)
-                                                    //.ignoresSafeAreaEdges(.all)
+                                                    
                                             )
                                 .shadow(radius: 5)
                             
@@ -399,10 +400,8 @@ extension MainMessagesViewModel {
         FirebaseManager.shared.firestore.collection("users").document(uid).updateData(userData) { err in
             if let err = err {
                 print("Failed to update gym: \(err)")
-                // Consider handling this error more gracefully in a production app
                 return
             }
-            // Here you might want to give feedback to the user about the gym update
         }
     }
 }
